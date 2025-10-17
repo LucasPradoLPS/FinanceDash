@@ -169,7 +169,22 @@ function updateTransaction(id, patch){
 
 // ---------- Cálculos / filtros ----------
 function computeTotals(){ let income=0, expense=0; for(const t of transactions){ if(!t || t.owner !== currentUserNorm) continue; if(!inCurrentFilter(t)) continue; if(t.type==='income') income+=Number(t.amount); else expense+=Number(t.amount); } return { income, expense, balance: income-expense } }
-function inCurrentFilter(t){ if(!activeFilter.from && !activeFilter.to) return true; const ts=t.createdAt||0; if(activeFilter.from){ const f=new Date(activeFilter.from).setHours(0,0,0,0); if(ts<f) return false } if(activeFilter.to){ const to=new Date(activeFilter.to).setHours(23,59,59,999); if(ts>to) return false } if(activeFilter.category && t.category !== activeFilter.category) return false; return true }
+function inCurrentFilter(t){
+  if(!t) return false;
+  // if no filter set, include all
+  if(!activeFilter || (!activeFilter.from && !activeFilter.to && !activeFilter.category)) return true;
+  // normalize transaction timestamp
+  let ts = 0;
+  try{
+    if(typeof t.createdAt === 'number') ts = t.createdAt;
+    else if(typeof t.createdAt === 'string' && t.createdAt) ts = new Date(t.createdAt).getTime();
+    else ts = 0;
+  }catch(e){ ts = 0; }
+  if(activeFilter.from){ const f = new Date(activeFilter.from); f.setHours(0,0,0,0); if(ts < f.getTime()) return false; }
+  if(activeFilter.to){ const to = new Date(activeFilter.to); to.setHours(23,59,59,999); if(ts > to.getTime()) return false; }
+  if(activeFilter.category && activeFilter.category !== '' && t.category !== activeFilter.category) return false;
+  return true;
+}
 function getCategoryMapByMode(){
   if(chartMode==='all'){
     const maps = { expense:{}, income:{} };
