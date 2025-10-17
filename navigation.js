@@ -1,5 +1,7 @@
 // navigation.js - controla sidebar, rolagem suave e destaque de seção
 (function(){
+  // Force dark theme globally to ensure pages render with the expected dark palette.
+  try{ document.documentElement.setAttribute('data-theme','dark'); document.body.classList.add('theme-dark'); }catch(e){}
   const allLinks = Array.from(document.querySelectorAll('.nav-list a'));
   const hasAnchorMode = allLinks.some(l => l.getAttribute('href')?.startsWith('#'));
 
@@ -79,17 +81,17 @@
     const nav = document.querySelector('.nav-list');
     if(nav){
       const tools = [
-        { id:'menu-account', label:'Minha Conta', action:'account' },
-        { id:'menu-reset', label:'Reset meus dados', action:'reset' },
-        { id:'menu-reports', label:'Relatórios', action:'reports' },
-        { id:'menu-settings', label:'Configurações', action:'settings' },
-        { id:'menu-help', label:'Ajuda / Sobre', action:'help' }
+        { id:'menu-account', label:'Minha Conta', action:'account', href:'minha-conta.html' },
+        { id:'menu-reset', label:'Reset meus dados', action:'reset', href:'minha-conta.html' },
+        { id:'menu-reports', label:'Relatórios', action:'reports', href:'relatorios.html' },
+        { id:'menu-settings', label:'Configurações', action:'settings', href:'configuracoes.html' },
+        { id:'menu-help', label:'Ajuda / Sobre', action:'help', href:'ajuda.html' }
       ];
       tools.forEach(t=>{
         if(document.getElementById(t.id)) return;
         const li = document.createElement('li');
-        const a = document.createElement('a');
-        a.href = '#'; a.id = t.id; a.textContent = t.label; a.className = 'nav-tool';
+  const a = document.createElement('a');
+  a.href = t.href || '#'; a.id = t.id; a.textContent = t.label; a.className = 'nav-tool';
         li.appendChild(a); nav.appendChild(li);
         a.addEventListener('click', (e)=>{
           e.preventDefault();

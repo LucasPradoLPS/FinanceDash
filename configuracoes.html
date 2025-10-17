@@ -72,7 +72,7 @@
     const load = () => {
       try{
         const p = (window.getUserPrefs && window.getUserPrefs()) || JSON.parse(localStorage.getItem(key)||'{}');
-        const theme = p.theme || 'light';
+  const theme = p.theme || 'dark';
         const currency = p.currency || 'BRL';
         if(document.getElementById('pref-currency')) document.getElementById('pref-currency').value = currency;
         applyTheme(theme);
@@ -137,8 +137,8 @@
 
     function doResetPrefs(){
   try{ if(window.setUserPrefs){ window.setUserPrefs({ theme: 'light', currency: 'BRL' }); } else { localStorage.removeItem(key); } }catch(e){}
-      // defaults
-      const defaultTheme = 'light'; const defaultCurrency = 'BRL';
+  // defaults
+  const defaultTheme = 'dark'; const defaultCurrency = 'BRL';
       document.getElementById('pref-currency').value = defaultCurrency;
       applyTheme(defaultTheme); updateCurrencyPreview();
       if(window.UI && UI.toast) UI.toast('Preferências restauradas.', {type:'success'});
