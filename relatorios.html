@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Relatórios - FinanceDash</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <aside class="sidebar" id="main-sidebar">
+    <div class="sidebar-inner">
+      <div class="identity-block">
+        <div class="id-logo">FinanceDash</div>
+        <div class="id-avatar" id="user-avatar" aria-hidden="true"></div>
+        <div class="id-user"><span id="side-user-email">—</span></div>
+        <button id="side-logout" class="ghost mini-logout">Sair</button>
+      </div>
+      <div class="sidebar-head">Menu</div>
+      <ul class="nav-list">
+        <li><a href="novo-lancamento.html">Novo Lançamento</a></li>
+        <li><a href="resumo.html">Resumo</a></li>
+        <li><a href="filtros.html">Filtros</a></li>
+        <li><a href="lancamentos.html">Lançamentos</a></li>
+        <li><a href="grafico.html">Gráfico</a></li>
+      </ul>
+    </div>
+  </aside>
+  <main class="container main-content">
+  <header class="app-header"><h1 class="app-title" data-i18n="title_reports">Relatórios</h1></header>
+    <section class="card">
+  <h2 data-i18n="report_monthly">Relatório Mensal</h2>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+  <label for="report-month" data-i18n="label_month">Mês</label>
+        <div class="month-picker" style="gap:6px">
+          <button id="month-prev" title="Mês anterior" class="ghost">‹</button>
+          <select id="report-month" aria-label="Escolher mês"></select>
+          <button id="month-next" title="Próximo mês" class="ghost">›</button>
+        </div>
+        <small id="month-count" class="month-count-badge">—</small>
+  <label for="report-type" data-i18n="label_type">Tipo</label>
+        <div class="month-picker type-picker" style="gap:6px">
+          <select id="report-type" aria-label="Escolher tipo"><option value="all">Todos</option><option value="entrada">Entradas</option><option value="saida">Saídas</option></select>
+        </div>
+  <button id="btn-generate" class="primary" data-i18n="btn_generate">Gerar</button>
+  <button id="btn-export-report" class="secondary" data-i18n="btn_export">Exportar CSV</button>
+      </div>
+      <div id="report-result" class="card small" style="margin-top:12px;padding:12px">
+        <div id="report-summary" data-i18n="msg_none">Nenhum relatório gerado.</div>
+        <table id="report-table" style="width:100%;margin-top:8px;border-collapse:collapse;display:none">
+          <thead><tr><th data-i18n="th_category" style="text-align:left;padding:6px;border-bottom:1px solid rgba(255,255,255,0.06)">Categoria</th><th data-i18n="th_total" style="text-align:right;padding:6px;border-bottom:1px solid rgba(255,255,255,0.06)">Total</th><th data-i18n="th_count" style="text-align:right;padding:6px;border-bottom:1px solid rgba(255,255,255,0.06)">Qtd</th><th data-i18n="th_percent" style="text-align:right;padding:6px;border-bottom:1px solid rgba(255,255,255,0.06)">%</th></tr></thead>
+          <tbody id="report-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="firebase.template.js"></script>
+  <script src="auth.js"></script>
+  <script src="userdb.js"></script>
+  <script src="i18n.js"></script>
+  <script src="app.js"></script>
+  <script src="navigation.js"></script>
+  <script>
+    if(!localStorage.getItem('auth_session_email')) location.replace('index.html');
+    document.getElementById('side-user-email').textContent = localStorage.getItem('auth_session_email') || '—';
+    document.getElementById('side-logout').addEventListener('click', () => { localStorage.removeItem('auth_session_email'); location.replace('index.html'); });
+
+    function loadTransactions(){
+      // Prefer UserDB if present
+      const norm = (localStorage.getItem('auth_session_email')||'').toLowerCase().trim();
+      if(window.UserDB && typeof UserDB.getUserData === 'function') return UserDB.getUserData(norm) || [];
+      if(window.__df && Array.isArray(window.__df.store?.data)) return window.__df.store.data || [];
+      // fallback: try global transactions variable
+      try { return window.transactions || []; } catch(e){ return []; }
+    }
+
+  function formatBR(v){ if(typeof formatCurrency === 'function') return formatCurrency(v); return Number(v).toLocaleString('pt-BR', { style:'currency', currency:'BRL' }); }
+
+    // Safe escapeHtml fallback if not provided globally
+    if(typeof escapeHtml !== 'function'){
+      function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+    }
+
+    // Month-helper: collect distinct YYYY-MM months from user's transactions
+    function availableMonths(){
+      const all = loadTransactions();
+      const norm = (localStorage.getItem('auth_session_email')||'').toLowerCase().trim();
+      const counts = {};
+      all.forEach(t => {
+        if(t.owner !== norm) return;
+        const d = t.date || (t.createdAt? new Date(t.createdAt).toISOString().slice(0,10): '');
+        if(!d) return;
+        const mm = d.slice(0,7);
+        counts[mm] = (counts[mm] || 0) + 1;
+      });
+      const arr = Object.keys(counts).sort((a,b)=>b.localeCompare(a)); // newest first
+      return { months: arr, counts };
+    }
+
+    function lastNMonths(n){
+      const out = [];
+      const now = new Date();
+      for(let i=0;i<n;i++){
+        const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+        const mm = d.toISOString().slice(0,7);
+        out.push(mm);
+      }
+      return out;
+    }
+
+    function populateMonthSelect(){
+      const sel = document.getElementById('report-month');
+      sel.innerHTML='';
+      const avail = availableMonths();
+      let months = (avail.months && avail.months.length) ? avail.months : lastNMonths(12);
+      const counts = avail.counts || {};
+      // ensure unique and sorted newest->oldest
+      months = Array.from(new Set(months)).sort((a,b)=>b.localeCompare(a));
+      months.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m;
+        const label = (new Date(m+'-01')).toLocaleString('pt-BR',{month:'long', year:'numeric'});
+        const ct = counts[m] || 0;
+        opt.textContent = ct ? `${label} (${ct} lanç.)` : label;
+        opt.dataset.count = ct;
+        sel.appendChild(opt);
+      });
+      // select current month if present, else pick first
+      const current = new Date().toISOString().slice(0,7);
+      if(Array.from(sel.options).some(o=>o.value===current)) sel.value = current;
+      else if(sel.options.length) sel.selectedIndex = 0;
+      document.getElementById('month-count').textContent = `${sel.options.length} mês(es)`;
+    }
+
+    document.getElementById('month-prev').addEventListener('click', ()=>{
+      const sel = document.getElementById('report-month');
+      if(!sel.options.length) return;
+      const idx = sel.selectedIndex;
+      if(idx < sel.options.length-1) sel.selectedIndex = idx+1; // older month
+      else sel.selectedIndex = 0; // wrap to newest
+      // auto-generate when navigating
+      document.getElementById('btn-generate').click();
+    });
+    document.getElementById('month-next').addEventListener('click', ()=>{
+      const sel = document.getElementById('report-month');
+      if(!sel.options.length) return;
+      const idx = sel.selectedIndex;
+      if(idx > 0) sel.selectedIndex = idx-1; // newer month
+      else sel.selectedIndex = sel.options.length-1; // wrap to oldest
+      // auto-generate when navigating
+      document.getElementById('btn-generate').click();
+    });
+
+    // Auto-generate when user changes month selection
+    document.getElementById('report-month').addEventListener('change', ()=>{
+      document.getElementById('btn-generate').click();
+    });
+
+    // Auto-generate when user changes report type
+    document.getElementById('report-type').addEventListener('change', ()=>{
+      document.getElementById('btn-generate').click();
+    });
+
+    // tolerant type matcher to support different stored type strings
+    function matchesType(t, desired){
+      if(!desired || desired === 'all') return true;
+      const val = String((t.type || t.kind || '').toLowerCase());
+      const mapIn = ['entrada','in','income','credit','cr','entradas'];
+      const mapOut = ['saida','saída','out','expense','debit','db','saidas','saídas'];
+      if(desired === 'entrada') return mapIn.includes(val);
+      if(desired === 'saida') return mapOut.includes(val);
+      return val === desired;
+    }
+
+    // Populate months on load and whenever transactions change (best-effort)
+    populateMonthSelect();
+  // react to pref changes (currency/locale)
+  window.addEventListener('prefs:changed', ()=>{ try{ document.getElementById('report-summary') && document.getElementById('report-summary').dispatchEvent(new Event('update')); }catch(e){} });
+    // If app exposes a store subscription, try to refresh months when it mutates
+    try{ if(window.__df && __df.store && typeof __df.store.subscribe === 'function'){ __df.store.subscribe(()=> populateMonthSelect()); } } catch(e){}
+
+    document.getElementById('btn-generate').addEventListener('click', () => {
+      const val = document.getElementById('report-month').value;
+      if(!val){ UI.toast('Selecione um mês.', {type:'error'}); return; }
+      const type = document.getElementById('report-type').value;
+      const month = val; // YYYY-MM
+      const all = loadTransactions();
+      const norm = (localStorage.getItem('auth_session_email')||'').toLowerCase().trim();
+      const filtered = all.filter(t => {
+        const tdate = (t.date || (t.createdAt? new Date(t.createdAt).toISOString().slice(0,7): ''));
+        if(!tdate) return false;
+        if(!tdate.startsWith(month)) return false;
+        if(t.owner !== norm) return false;
+        if(!matchesType(t, type)) return false;
+        return true;
+      });
+  if(!filtered.length){ document.getElementById('report-summary').textContent = (window.I18n? I18n.t('msg_none') : 'Nenhum dado para o mês selecionado.'); document.getElementById('report-table').style.display='none'; return; }
+      const byCat = {};
+      filtered.forEach(t => { const c = t.category || 'Sem categoria'; if(!byCat[c]) byCat[c] = { total:0, count:0 }; byCat[c].total += Number(t.amount || 0); byCat[c].count += 1; });
+      const entries = Object.entries(byCat).map(([k,v])=>({ category:k, total:v.total, count:v.count })).sort((a,b)=>b.total - a.total);
+      const grand = entries.reduce((s,e)=>s+e.total,0);
+      // Render table
+      const tbody = document.getElementById('report-body'); tbody.innerHTML='';
+      entries.forEach(e => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td style="padding:6px;border-bottom:1px solid rgba(255,255,255,0.04)">${escapeHtml(e.category)}</td><td style="padding:6px;text-align:right;border-bottom:1px solid rgba(255,255,255,0.04)">${formatBR(e.total)}</td><td style="padding:6px;text-align:right;border-bottom:1px solid rgba(255,255,255,0.04)">${e.count}</td><td style="padding:6px;text-align:right;border-bottom:1px solid rgba(255,255,255,0.04)">${((e.total/grand)*100).toFixed(1)}%</td>`;
+        tbody.appendChild(tr);
+      });
+  const totalLabel = (window.I18n? I18n.t('total_label') : 'Total:');
+  document.getElementById('report-summary').textContent = `${totalLabel} ${formatBR(grand)} — ${filtered.length} lançamento(s)`;
+      document.getElementById('report-table').style.display = 'table';
+    });
+
+    document.getElementById('btn-export-report').addEventListener('click', ()=>{
+      const month = document.getElementById('report-month').value || '';
+      const type = document.getElementById('report-type').value || 'all';
+  const rows = [[ (window.I18n? I18n.t('th_category') : 'categoria'), (window.I18n? I18n.t('th_total') : 'total'), (window.I18n? I18n.t('th_count') : 'qtd'), (window.I18n? I18n.t('th_percent') : 'percent') ]];
+      const tbody = document.getElementById('report-body');
+      if(tbody && tbody.children.length){
+        for(const r of tbody.children){
+          const cells = Array.from(r.children).map(td => td.textContent.trim());
+          rows.push(cells);
+        }
+      } else {
+        UI.toast('Nenhum relatório gerado para exportar.', {type:'info'}); return;
+      }
+      const csv = rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `relatorio_${month || 'all'}_${type}.csv`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      UI.toast('Relatório exportado.', {type:'success'});
+    });
+  </script>
+</body>
+</html>

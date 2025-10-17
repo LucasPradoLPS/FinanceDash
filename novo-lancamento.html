@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Novo Lançamento - FinanceDash</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <aside class="sidebar" id="main-sidebar">
+    <div class="sidebar-inner">
+      <div class="identity-block">
+        <div class="id-logo">FinanceDash</div>
+        <div class="id-avatar" id="user-avatar" aria-hidden="true"></div>
+        <div class="id-user"><span id="side-user-email">—</span></div>
+        <button id="side-logout" class="ghost mini-logout">Sair</button>
+      </div>
+      <div class="sidebar-head">Menu</div>
+      <ul class="nav-list">
+        <li><a href="novo-lancamento.html">Novo Lançamento</a></li>
+        <li><a href="resumo.html">Resumo</a></li>
+        <li><a href="filtros.html">Filtros</a></li>
+        <li><a href="lancamentos.html">Lançamentos</a></li>
+        <li><a href="grafico.html">Gráfico</a></li>
+      </ul>
+    </div>
+  </aside>
+  <main class="container main-content">
+    <header class="app-header"><h1 class="app-title">Novo Lançamento</h1></header>
+    <section class="card">
+      <h2>Adicionar Lançamento</h2>
+      <form id="transaction-form">
+        <div class="row"><label>Descrição</label><input type="text" id="description" required /></div>
+        <div class="row"><label>Valor</label><input type="text" id="amount" inputmode="decimal" placeholder="Ex: 123,45" required /></div>
+        <div class="row"><label>Tipo</label><select id="type"><option value="income">Entrada</option><option value="expense">Saída</option></select></div>
+        <div class="row"><label>Categoria</label><input type="text" id="category" placeholder="Ex: Alimentação" required /></div>
+        <div class="row actions"><button type="submit">Adicionar</button></div>
+        <div id="tx-feedback" class="small" aria-live="polite" style="margin-top:.75rem;"></div>
+      </form>
+    </section>
+    <section class="card list" style="margin-top:1.5rem;">
+      <h2>Últimos Lançamentos</h2>
+      <ul id="transaction-list"></ul>
+    </section>
+  </main>
+  <script src="firebase.template.js"></script>
+  <script src="auth.js"></script>
+  <script src="userdb.js"></script>
+  <script src="app.js"></script>
+  <script src="navigation.js"></script>
+  <script>if(!localStorage.getItem('auth_session_email')) location.replace('index.html');</script>
+</body>
+</html>

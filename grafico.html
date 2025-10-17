@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gráfico - FinanceDash</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <aside class="sidebar" id="main-sidebar">
+    <div class="sidebar-inner">
+      <div class="identity-block">
+        <div class="id-logo">FinanceDash</div>
+        <div class="id-avatar" id="user-avatar" aria-hidden="true"></div>
+        <div class="id-user"><span id="side-user-email">—</span></div>
+        <button id="side-logout" class="ghost mini-logout">Sair</button>
+      </div>
+      <div class="sidebar-head">Menu</div>
+      <ul class="nav-list">
+        <li><a href="novo-lancamento.html">Novo Lançamento</a></li>
+        <li><a href="resumo.html">Resumo</a></li>
+        <li><a href="filtros.html">Filtros</a></li>
+        <li><a href="lancamentos.html">Lançamentos</a></li>
+        <li><a href="grafico.html">Gráfico</a></li>
+      </ul>
+    </div>
+  </aside>
+  <main class="container main-content">
+    <header class="app-header"><h1 class="app-title">Gráfico de Gastos</h1></header>
+    <section class="card chart">
+      <div class="chart-header-row" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+        <h2 style="margin:0;">Gastos por Categoria</h2>
+        <div class="chart-actions" style="display:flex;gap:.5rem;flex-wrap:wrap;">
+          <button id="chart-type-pie" class="secondary" style="font-size:.70rem;">Pizza</button>
+          <button id="chart-type-doughnut" class="secondary" style="font-size:.70rem;">Rosca</button>
+          <button id="chart-type-bar" class="secondary" style="font-size:.70rem;">Barras</button>
+          <button id="chart-download" class="secondary" style="font-size:.70rem;">Download PNG</button>
+          <button id="chart-show-all" class="secondary" style="font-size:.70rem;">Mostrar Todos</button>
+          <button id="chart-toggle-stack" class="secondary" style="font-size:.70rem;">Empilhar</button>
+        </div>
+      </div>
+      <div class="chart-box size-compact" id="chart-box">
+        <canvas id="expense-chart"></canvas>
+      </div>
+      <div id="chart-legend" class="chart-legend" aria-label="Legenda do gráfico"></div>
+    </section>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="firebase.template.js"></script>
+  <script src="auth.js"></script>
+  <script src="userdb.js"></script>
+  <script src="app.js"></script>
+  <script src="navigation.js"></script>
+  <!-- Modo sempre compacto: removido botão de alternância -->
+  <script>if(!localStorage.getItem('auth_session_email')) location.replace('index.html');</script>
+</body>
+</html>

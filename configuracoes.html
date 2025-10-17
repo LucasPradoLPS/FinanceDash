@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Configurações - FinanceDash</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <aside class="sidebar" id="main-sidebar">
+    <div class="sidebar-inner">
+      <div class="identity-block">
+        <div class="id-logo">FinanceDash</div>
+        <div class="id-avatar" id="user-avatar" aria-hidden="true"></div>
+        <div class="id-user"><span id="side-user-email">—</span></div>
+        <button id="side-logout" class="ghost mini-logout">Sair</button>
+      </div>
+      <div class="sidebar-head">Menu</div>
+      <ul class="nav-list">
+        <li><a href="novo-lancamento.html">Novo Lançamento</a></li>
+        <li><a href="resumo.html">Resumo</a></li>
+        <li><a href="filtros.html">Filtros</a></li>
+        <li><a href="lancamentos.html">Lançamentos</a></li>
+        <li><a href="grafico.html">Gráfico</a></li>
+      </ul>
+    </div>
+  </aside>
+  <main class="container main-content">
+    <header class="app-header"><h1 class="app-title">Configurações</h1></header>
+    <section class="card" style="margin-top:16px">
+      <h2>Preferências</h2>
+      <label for="pref-currency">Moeda</label>
+      <div class="month-picker type-picker" style="gap:8px;align-items:center">
+        <select id="pref-currency" aria-label="Escolher moeda">
+          <option value="BRL">R$ - Real (BRL)</option>
+          <option value="USD">$ - Dólar (USD)</option>
+          <option value="EUR">€ - Euro (EUR)</option>
+          <option value="JPY">¥ - Yen (JPY)</option>
+          <option value="GBP">£ - Libra (GBP)</option>
+        </select>
+        <div class="small" style="margin-left:12px" aria-hidden="true">Preview: <span id="currency-preview">—</span></div>
+      </div>
+      
+      <div class="actions" style="gap:8px">
+        <button id="btn-save-prefs" class="primary">Salvar</button>
+        <button id="btn-reset-prefs" class="ghost">Resetar preferências</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="firebase.template.js"></script>
+  <script src="auth.js"></script>
+  <script src="userdb.js"></script>
+  <script src="app.js"></script>
+  <script src="navigation.js"></script>
+  <script>
+  if(!localStorage.getItem('auth_session_email')) location.replace('index.html');
+  // normalize session email (trim + lower) — use Auth.getSession if available
+  const sessionRaw = (window.Auth && Auth.getSession && Auth.getSession()) || localStorage.getItem('auth_session_email') || '';
+  const email = String(sessionRaw).trim().toLowerCase();
+    document.getElementById('side-user-email').textContent = localStorage.getItem('auth_session_email') || '—';
+    document.getElementById('side-logout').addEventListener('click', () => { localStorage.removeItem('auth_session_email'); location.replace('index.html'); });
+
+    const key = 'fd_prefs::'+email;
+    const previewEl = document.getElementById('currency-preview');
+    function applyTheme(theme){
+      try{
+        document.documentElement.setAttribute('data-theme', theme);
+        document.body.classList.toggle('theme-dark', theme === 'dark');
+      }catch(e){}
+    }
+    const load = () => {
+      try{
+        const p = (window.getUserPrefs && window.getUserPrefs()) || JSON.parse(localStorage.getItem(key)||'{}');
+        const theme = p.theme || 'light';
+        const currency = p.currency || 'BRL';
+        if(document.getElementById('pref-currency')) document.getElementById('pref-currency').value = currency;
+        applyTheme(theme);
+        updateCurrencyPreview();
+      }catch(e){}
+    };
+    load();
+
+    function updateCurrencyPreview(){
+      const currency = document.getElementById('pref-currency')?.value || 'BRL';
+      const example = 1234.56;
+      if(previewEl){
+        if(typeof formatCurrency === 'function') previewEl.textContent = formatCurrency(example);
+        else {
+          // simple fallback: show symbol
+          const map = { BRL: 'R$ 1.234,56', USD: '$1,234.56', EUR: '€1.234,56', JPY: '¥1,235', GBP: '£1,234.56' };
+          previewEl.textContent = map[currency] || `${currency} ${example}`;
+        }
+      }
+    }
+
+    // auto-save when currency changes (preserve existing theme)
+    document.getElementById('pref-currency').addEventListener('change', ()=>{
+  const currency = document.getElementById('pref-currency').value || 'BRL';
+  const existing = (window.getUserPrefs && window.getUserPrefs()) || JSON.parse(localStorage.getItem(key)||'{}');
+  const theme = existing.theme || 'light';
+  if(window.setUserPrefs) window.setUserPrefs({ theme, currency }); else localStorage.setItem(key, JSON.stringify({theme,currency}));
+    // read back to ensure saved and update UI
+    const saved = (window.getUserPrefs && window.getUserPrefs()) || JSON.parse(localStorage.getItem(key)||'{}');
+    if(saved && saved.currency) document.getElementById('pref-currency').value = saved.currency;
+    updateCurrencyPreview();
+    if(window.UI && UI.toast) UI.toast('Moeda atualizada: ' + (saved.currency||currency), {type:'success'});
+      // notify app to refresh displays (balance, reports, etc.)
+      try{ window.dispatchEvent(new CustomEvent('prefs:changed', { detail: { currency } })); }catch(e){}
+    });
+
+    // Note: appearance controls removed from UI. Theme is still applied on load and can be changed elsewhere (minha-conta toggle).
+
+    document.getElementById('btn-save-prefs').addEventListener('click', ()=>{
+  const currency = document.getElementById('pref-currency').value || 'BRL';
+  const existing = (window.getUserPrefs && window.getUserPrefs()) || JSON.parse(localStorage.getItem(key)||'{}');
+  const theme = existing.theme || 'light';
+  if(window.setUserPrefs) window.setUserPrefs({ theme, currency }); else localStorage.setItem(key, JSON.stringify({theme,currency}));
+    // readback
+    const savedS = (window.getUserPrefs && window.getUserPrefs()) || JSON.parse(localStorage.getItem(key)||'{}');
+    if(savedS && savedS.theme) applyTheme(savedS.theme);
+    if(savedS && savedS.currency) document.getElementById('pref-currency').value = savedS.currency;
+    updateCurrencyPreview();
+    if(window.UI && UI.toast) UI.toast('Preferências salvas: ' + (savedS.currency||currency), {type:'success'}); else alert('Preferências salvas.');
+      try{ window.dispatchEvent(new CustomEvent('prefs:changed', { detail: { theme, currency } })); }catch(e){}
+    });
+
+    // Reset preferences for this user
+    document.getElementById('btn-reset-prefs').addEventListener('click', ()=>{
+      if(window.UI && UI.confirm){
+        UI.confirm('Resetar preferências','Deseja restaurar as preferências para os valores padrões?').then(ok=>{ if(!ok) return; doResetPrefs(); });
+        return;
+      }
+      if(!confirm('Deseja restaurar as preferências para os valores padrões?')) return;
+      doResetPrefs();
+    });
+
+    function doResetPrefs(){
+  try{ if(window.setUserPrefs){ window.setUserPrefs({ theme: 'light', currency: 'BRL' }); } else { localStorage.removeItem(key); } }catch(e){}
+      // defaults
+      const defaultTheme = 'light'; const defaultCurrency = 'BRL';
+      document.getElementById('pref-currency').value = defaultCurrency;
+      applyTheme(defaultTheme); updateCurrencyPreview();
+      if(window.UI && UI.toast) UI.toast('Preferências restauradas.', {type:'success'});
+      try{ window.dispatchEvent(new CustomEvent('prefs:changed', { detail: { theme: defaultTheme, currency: defaultCurrency } })); }catch(e){}
+    }
+  </script>
+</body>
+</html>

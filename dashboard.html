@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard Financeiro</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <noscript>Habilite JavaScript para usar o aplicativo.</noscript>
+  <div style="display:flex;min-height:100vh;align-items:center;justify-content:center;font-family:Inter,system-ui;">
+    <div class="card" style="max-width:520px;text-align:center;">
+      <h1 style="margin-top:0;">Estrutura Atualizada</h1>
+      <p>O dashboard agora está dividido em páginas separadas.</p>
+      <ul style="list-style:none;padding:0;margin:20px 0;display:flex;flex-direction:column;gap:8px;">
+        <li><a href="novo-lancamento.html">Novo Lançamento</a></li>
+        <li><a href="resumo.html">Resumo</a></li>
+        <li><a href="filtros.html">Filtros</a></li>
+        <li><a href="lancamentos.html">Lançamentos</a></li>
+        <li><a href="grafico.html">Gráfico</a></li>
+      </ul>
+      <p>Redirecionando automaticamente para <strong>Resumo</strong>…</p>
+    </div>
+  </div>
+  <script>setTimeout(()=>location.replace('resumo.html'),600);</script>
+</body>
+</html>

@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Filtros - FinanceDash</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <aside class="sidebar" id="main-sidebar">
+    <div class="sidebar-inner">
+      <div class="identity-block">
+        <div class="id-logo">FinanceDash</div>
+        <div class="id-avatar" id="user-avatar" aria-hidden="true"></div>
+        <div class="id-user"><span id="side-user-email">—</span></div>
+        <button id="side-logout" class="ghost mini-logout">Sair</button>
+      </div>
+      <div class="sidebar-head">Menu</div>
+      <ul class="nav-list">
+        <li><a href="novo-lancamento.html">Novo Lançamento</a></li>
+        <li><a href="resumo.html">Resumo</a></li>
+        <li><a href="filtros.html">Filtros</a></li>
+        <li><a href="lancamentos.html">Lançamentos</a></li>
+        <li><a href="grafico.html">Gráfico</a></li>
+      </ul>
+    </div>
+  </aside>
+  <main class="container main-content">
+    <header class="app-header"><h1 class="app-title">Filtros</h1></header>
+    <section class="card filters">
+      <h2>Aplicar Filtros</h2>
+      <div class="row"><label>Período</label>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+          <input type="date" id="filter-from" aria-label="Data de início" />
+          <span>até</span>
+          <input type="date" id="filter-to" aria-label="Data de fim" />
+          <button id="apply-filters">Aplicar</button>
+          <button id="clear-filters" class="secondary">Limpar</button>
+        </div>
+        <div style="margin-top:.5rem; display:flex; gap:.5rem; align-items:center; flex-wrap:wrap" id="period-presets">
+          <small>Atalhos:</small>
+          <button class="ghost" data-preset="today">Hoje</button>
+          <button class="ghost" data-preset="this-month">Este mês</button>
+          <button class="ghost" data-preset="last-month">Mês passado</button>
+          <button class="ghost" data-preset="this-year">Este ano</button>
+        </div>
+      </div>
+      <div class="row"><label>Por mês</label>
+        <div style="display:flex; gap:8px; align-items:center">
+          <input type="month" id="filter-month" aria-label="Mês" />
+          <button id="apply-month">Aplicar mês</button>
+        </div>
+      </div>
+      <div class="row"><label>Categoria</label><select id="filter-category"><option value="">(todas)</option></select></div>
+      <div class="row"><button id="export-csv">Exportar CSV</button></div>
+      <div class="row" style="margin-top:.5rem; display:flex; gap:.5rem; align-items:center;">
+        <button id="sanitize-now" class="secondary">Sanitizar agora</button>
+        <button id="export-csv-user" class="secondary">Exportar CSV</button>
+      </div>
+      <div class="row"><label>Sincronizar</label><div style="display:flex; gap:8px; align-items:center"><input type="checkbox" id="sync-firebase" /> <small>Enviar para Firebase (opcional)</small></div></div>
+    </section>
+  </main>
+  <script src="firebase.template.js"></script>
+  <script src="auth.js"></script>
+  <script src="userdb.js"></script>
+  <script src="app.js"></script>
+  <script src="navigation.js"></script>
+  <script src="ui-widgets.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', ()=>{
+  const sBtn = document.getElementById('sanitize-now');
+  const expCsvUser = document.getElementById('export-csv-user');
+  if(sBtn){ sBtn.addEventListener('click', ()=>{ const ok = window.__sanitizeNow(); UI.toast(ok? 'Sanitização aplicada':'Falha ao sanitizar', {type: ok? 'success':'error'}); }); }
+  if(expCsvUser){ expCsvUser.addEventListener('click', ()=>{ if(typeof exportCSV === 'function'){ exportCSV(); } else { UI.toast('Exportar não disponível', {type:'error'}); } }); }
+    
+  // Filters improvements
+  const from = document.getElementById('filter-from');
+  const to = document.getElementById('filter-to');
+  const applyBtn = document.getElementById('apply-filters');
+  const clearBtn = document.getElementById('clear-filters');
+  const presets = document.getElementById('period-presets');
+  const monthInput = document.getElementById('filter-month');
+  const applyMonth = document.getElementById('apply-month');
+
+  const SESSION_KEY = 'fd_filter_range';
+
+  function formatISODate(d){
+    if(!d) return '';
+    const iso = d.toISOString();
+    return iso.slice(0,10);
+  }
+
+  function setRange(fromDate, toDate){
+    if(from) from.value = fromDate || '';
+    if(to) to.value = toDate || '';
+    if(fromDate || toDate){
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({from: fromDate||'', to: toDate||''}));
+    } else {
+      sessionStorage.removeItem(SESSION_KEY);
+    }
+  }
+
+  function loadRangeFromSession(){
+    try{
+      const raw = sessionStorage.getItem(SESSION_KEY);
+      if(!raw) return;
+      const obj = JSON.parse(raw);
+      if(obj){
+        if(from) from.value = obj.from || '';
+        if(to) to.value = obj.to || '';
+      }
+    }catch(e){ console.warn('failed reading filter session', e); }
+  }
+
+  function applyFilters(){
+    if(!from || !to) return UI.toast('Campos de data ausentes', {type:'error'});
+    const f = from.value;
+    const t = to.value;
+    if(f && t && f > t){
+      return UI.toast('Período inválido: data de início é posterior à data de fim', {type:'error'});
+    }
+    setRange(f||'', t||'');
+    // Dispatch a simple event so other parts can listen
+    document.dispatchEvent(new CustomEvent('filters:applied', {detail:{from: f||'', to: t||''}}));
+    UI.toast('Filtros aplicados', {type:'success'});
+  }
+
+  function clearFilters(){
+    setRange('','');
+    document.dispatchEvent(new CustomEvent('filters:cleared'));
+    UI.toast('Filtros limpos', {type:'info'});
+  }
+
+  function presetHandler(ev){
+    const p = ev.target && ev.target.getAttribute && ev.target.getAttribute('data-preset');
+    if(!p) return;
+    const now = new Date();
+    let f='', t='';
+    if(p === 'today'){
+      f = formatISODate(now); t = formatISODate(now);
+    } else if(p === 'this-month'){
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = new Date(now.getFullYear(), now.getMonth()+1, 0);
+      f = formatISODate(start); t = formatISODate(end);
+    } else if(p === 'last-month'){
+      const start = new Date(now.getFullYear(), now.getMonth()-1, 1);
+      const end = new Date(now.getFullYear(), now.getMonth(), 0);
+      f = formatISODate(start); t = formatISODate(end);
+    } else if(p === 'this-year'){
+      const start = new Date(now.getFullYear(), 0, 1);
+      const end = new Date(now.getFullYear(), 11, 31);
+      f = formatISODate(start); t = formatISODate(end);
+    }
+    setRange(f,t);
+    UI.toast('Atalho aplicado: '+(ev.target.textContent||p), {type:'success'});
+    document.dispatchEvent(new CustomEvent('filters:applied', {detail:{from: f, to:t}}));
+  }
+
+  if(presets){ presets.addEventListener('click', presetHandler); }
+  if(applyBtn){ applyBtn.addEventListener('click', applyFilters); }
+  if(clearBtn){ clearBtn.addEventListener('click', clearFilters); }
+  if(applyMonth && monthInput){
+    applyMonth.addEventListener('click', ()=>{
+      const v = monthInput.value; // YYYY-MM
+      if(!v) return UI.toast('Selecione um mês', {type:'error'});
+      const parts = v.split('-');
+      const y = parseInt(parts[0],10); const m = parseInt(parts[1],10)-1;
+      const start = new Date(y,m,1);
+      const end = new Date(y,m+1,0);
+      setRange(formatISODate(start), formatISODate(end));
+      document.dispatchEvent(new CustomEvent('filters:applied', {detail:{from: formatISODate(start), to: formatISODate(end)}}));
+      UI.toast('Filtro por mês aplicado', {type:'success'});
+    });
+  }
+
+  // Initialize from session if present
+  loadRangeFromSession();
+
+  });
+  </script>
+  <script>if(!localStorage.getItem('auth_session_email')) location.replace('index.html');</script>
+</body>
+</html>

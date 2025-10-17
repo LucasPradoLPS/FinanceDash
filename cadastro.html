@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Criar Conta - FinanceDash</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="login-layout">
+    <aside class="login-aside">
+      <div class="brand">
+        <div class="logo-circle">FD</div>
+        <h1>FinanceDash</h1>
+        <p>Crie sua conta para começar a organizar suas finanças.</p>
+      </div>
+      <ul class="benefits">
+        <li>Controle de lançamentos</li>
+        <li>Resumo consolidado</li>
+        <li>Gráficos dinâmicos</li>
+        <li>Exportações e backups</li>
+      </ul>
+      <footer class="aside-footer">© <span id="year"></span> FinanceDash</footer>
+    </aside>
+    <main class="login-main">
+      <section class="login-panel card" id="register-card">
+        <h2>Criar sua conta</h2>
+        <form id="register-form" novalidate>
+          <div class="field-group with-icon">
+            <label for="reg-name">Nome</label>
+            <div class="input-wrapper">
+              <span class="input-icon" aria-hidden="true">👤</span>
+              <input type="text" id="reg-name" placeholder="Seu nome" required minlength="2" />
+            </div>
+            <small class="field-error" id="name-error" aria-live="assertive"></small>
+          </div>
+          <div class="field-group with-icon">
+            <label for="reg-email">Email</label>
+            <div class="input-wrapper">
+              <span class="input-icon" aria-hidden="true">📧</span>
+              <input type="email" id="reg-email" placeholder="voce@exemplo.com" required autocomplete="email" />
+            </div>
+            <small class="field-error" id="reg-email-error" aria-live="assertive"></small>
+          </div>
+          <div class="field-group with-icon">
+            <label for="reg-pass">Senha</label>
+            <div class="input-wrapper">
+              <span class="input-icon" aria-hidden="true">🔒</span>
+              <input type="password" id="reg-pass" placeholder="Mínimo 6 caracteres" required minlength="6" />
+              <button type="button" class="toggle-pass" id="toggle-pass-reg" aria-label="Mostrar senha">👁</button>
+            </div>
+            <small class="field-error" id="reg-pass-error" aria-live="assertive"></small>
+          </div>
+          <div class="field-group with-icon">
+            <label for="reg-pass2">Confirmar Senha</label>
+            <div class="input-wrapper">
+              <span class="input-icon" aria-hidden="true">✅</span>
+              <input type="password" id="reg-pass2" placeholder="Repita a senha" required minlength="6" />
+            </div>
+            <small class="field-error" id="reg-pass2-error" aria-live="assertive"></small>
+          </div>
+          <div class="actions horiz">
+            <button type="submit" id="btn-create"><span class="btn-label">Cadastrar</span><span class="btn-spinner" aria-hidden="true"></span></button>
+            <a href="index.html" class="secondary" style="text-decoration:none;display:inline-block;padding:10px 14px;border:1px solid rgba(255,255,255,0.08);border-radius:10px;">Voltar</a>
+          </div>
+          <div class="agreement small">Ao continuar você confirma que leu nossos <a href="#" class="link-muted">Termos</a>.</div>
+        </form>
+        <div class="login-status small" id="register-status" aria-live="polite" role="status"></div>
+      </section>
+    </main>
+  </div>
+  <script>document.getElementById('year').textContent=new Date().getFullYear();</script>
+  <script src="firebase.template.js"></script>
+  <script src="auth.js"></script>
+  <script src="memory.js"></script>
+  <script src="register.js"></script>
+</body>
+</html>

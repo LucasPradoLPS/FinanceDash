@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Backup / Restaurar - FinanceDash</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <aside class="sidebar" id="main-sidebar">
+    <div class="sidebar-inner">
+      <div class="identity-block">
+        <div class="id-logo">FinanceDash</div>
+        <div class="id-avatar" id="user-avatar" aria-hidden="true"></div>
+        <div class="id-user"><span id="side-user-email">—</span></div>
+        <button id="side-logout" class="ghost mini-logout">Sair</button>
+      </div>
+      <div class="sidebar-head">Menu</div>
+      <ul class="nav-list">
+        <li><a href="novo-lancamento.html">Novo Lançamento</a></li>
+        <li><a href="resumo.html">Resumo</a></li>
+        <li><a href="filtros.html">Filtros</a></li>
+        <li><a href="lancamentos.html">Lançamentos</a></li>
+        <li><a href="grafico.html">Gráfico</a></li>
+      </ul>
+    </div>
+  </aside>
+  <main class="container main-content">
+    <header class="app-header"><h1 class="app-title">Backup / Restaurar</h1></header>
+    <section class="card">
+      <h2>Backup</h2>
+      <p>Crie um backup dos seus lançamentos (arquivo JSON).</p>
+      <div class="actions">
+        <button id="btn-backup" class="primary">Baixar backup (JSON)</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Restaurar</h2>
+      <p>Envie um arquivo JSON previamente exportado para restaurar seus lançamentos. O arquivo será validado e os items receberão o seu owner atual.</p>
+      <input type="file" id="file-restore" accept="application/json" />
+      <div class="actions"><button id="btn-apply-restore" class="primary">Restaurar</button></div>
+      <div id="restore-status" class="small"></div>
+    </section>
+  </main>
+
+  <script src="firebase.template.js"></script>
+  <script src="auth.js"></script>
+  <script src="userdb.js"></script>
+  <script src="app.js"></script>
+  <script src="navigation.js"></script>
+  <script src="ui-widgets.js"></script>
+  <script>
+  if(!localStorage.getItem('auth_session_email')) location.replace('index.html');
+  const email = localStorage.getItem('auth_session_email') || '—';
+  const sideEmailEl = document.getElementById('side-user-email'); if(sideEmailEl) sideEmailEl.textContent = email;
+  const sideLogout = document.getElementById('side-logout'); if(sideLogout) sideLogout.addEventListener('click', () => { localStorage.removeItem('auth_session_email'); location.replace('index.html'); });
+
+  const backupBtn = document.getElementById('btn-backup');
+  if(backupBtn) backupBtn.addEventListener('click', async () => {
+      try {
+        if(typeof window.__userExport === 'function') {
+          const data = window.__userExport();
+          const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a'); a.href = url; a.download = 'finance_backup.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+          return;
+        }
+        UI.toast('Export não disponível.', {type:'error'});
+      } catch(e){ if(window.UI && UI.toast) UI.toast('Erro ao gerar backup: '+e.message, {type:'error'}); else alert('Erro ao gerar backup: '+e.message); }
+    });
+
+    const applyBtn = document.getElementById('btn-apply-restore');
+    if(applyBtn) applyBtn.addEventListener('click', async () => {
+      const fileEl = document.getElementById('file-restore');
+      const f = fileEl && fileEl.files ? fileEl.files[0] : null;
+  if(!f) return (window.UI && UI.toast) ? UI.toast('Selecione um arquivo JSON para restaurar.', {type:'error'}) : alert('Selecione um arquivo JSON para restaurar.');
+      const text = await f.text();
+      try {
+        const parsed = JSON.parse(text);
+        // Prefer app's import helper if present
+        if(typeof window.__userImport === 'function') {
+          window.__userImport(parsed);
+          document.getElementById('restore-status').textContent = 'Restaurado com sucesso.';
+        } else {
+          // fallback: merge into memory store, forcing owner
+          if(Array.isArray(parsed)) {
+            const norm = (localStorage.getItem('auth_session_email') || '').toLowerCase().trim();
+            const toPush = parsed.map(p => ({...p, owner: norm}));
+            if(window.__df && window.__df.store && typeof window.__df.store.push === 'function') {
+              toPush.forEach(it => window.__df.store.push(it));
+              document.getElementById('restore-status').textContent = 'Restaurado (fallback) com sucesso.';
+            } else UI.toast('Store não disponível para restauração.', {type:'error'});
+          } else UI.toast('Formato de arquivo inválido.', {type:'error'});
+        }
+      } catch(err){ document.getElementById('restore-status').textContent = 'Erro: '+err.message; UI.toast('Erro: '+err.message, {type:'error'}); }
+    });
+  </script>
+</body>
+</html>

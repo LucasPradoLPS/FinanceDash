@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lançamentos - FinanceDash</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <aside class="sidebar" id="main-sidebar">
+    <div class="sidebar-inner">
+      <div class="identity-block">
+        <div class="id-logo">FinanceDash</div>
+        <div class="id-avatar" id="user-avatar" aria-hidden="true"></div>
+        <div class="id-user"><span id="side-user-email">—</span></div>
+        <button id="side-logout" class="ghost mini-logout">Sair</button>
+      </div>
+      <div class="sidebar-head">Menu</div>
+      <ul class="nav-list">
+        <li><a href="novo-lancamento.html">Novo Lançamento</a></li>
+        <li><a href="resumo.html">Resumo</a></li>
+        <li><a href="filtros.html">Filtros</a></li>
+        <li><a href="lancamentos.html">Lançamentos</a></li>
+        <li><a href="grafico.html">Gráfico</a></li>
+      </ul>
+    </div>
+  </aside>
+  <main class="container main-content">
+    <header class="app-header"><h1 class="app-title">Lançamentos</h1></header>
+    <section class="card list">
+      <div class="list-header-flex">
+        <h2>Todos os Lançamentos</h2>
+        <button id="btn-undo" class="secondary" title="Desfazer última alteração">⮪ Desfazer</button>
+      </div>
+      <ul id="transaction-list"></ul>
+      <small id="undo-hint" class="muted" style="display:block;margin-top:.75rem;">Pode desfazer inclusões, edições e exclusões recentes.</small>
+    </section>
+  </main>
+  <div id="edit-modal" class="modal" aria-hidden="true">
+    <div class="modal-content">
+      <header class="modal-header"><h3>Editar Lançamento</h3><button id="modal-close">×</button></header>
+      <div class="modal-body">
+        <label>Descrição <input id="modal-description" type="text" /></label>
+        <label>Valor <input id="modal-amount" type="number" step="0.01" /></label>
+        <label>Tipo <select id="modal-type"><option value="income">Entrada</option><option value="expense">Saída</option></select></label>
+        <label>Categoria <input id="modal-category" type="text" /></label>
+      </div>
+      <footer class="modal-footer"><button id="modal-save">Salvar</button><button id="modal-cancel" class="secondary">Cancelar</button></footer>
+    </div>
+  </div>
+  <script src="firebase.template.js"></script>
+  <script src="auth.js"></script>
+  <script src="userdb.js"></script>
+  <script src="app.js"></script>
+  <script src="navigation.js"></script>
+  <script>
+    if(!localStorage.getItem('auth_session_email')) location.replace('index.html');
+    document.addEventListener('DOMContentLoaded', () => {
+      const undoBtn = document.getElementById('btn-undo');
+      if(window.__df && typeof window.__df.undoLast === 'function'){
+        undoBtn.addEventListener('click', () => {
+          window.__df.undoLast();
+          if(window.__df && typeof window.__df.renderAll === 'function'){
+            window.__df.renderAll();
+          } else if(typeof renderTransactions === 'function') {
+            // fallback se exposto globalmente
+            renderTransactions();
+          }
+        });
+      } else {
+        undoBtn.disabled = true;
+        undoBtn.title = 'Função de desfazer não disponível.';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Minha Conta - FinanceDash</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <aside class="sidebar" id="main-sidebar">
+    <div class="sidebar-inner">
+      <div class="identity-block">
+        <div class="id-logo">FinanceDash</div>
+        <div class="id-avatar" id="user-avatar" aria-hidden="true"></div>
+        <div class="id-user"><span id="side-user-email">—</span></div>
+        <button id="side-logout" class="ghost mini-logout">Sair</button>
+      </div>
+      <div class="sidebar-head">Menu</div>
+      <ul class="nav-list">
+        <li><a href="novo-lancamento.html">Novo Lançamento</a></li>
+        <li><a href="resumo.html">Resumo</a></li>
+        <li><a href="filtros.html">Filtros</a></li>
+        <li><a href="lancamentos.html">Lançamentos</a></li>
+        <li><a href="grafico.html">Gráfico</a></li>
+      </ul>
+    </div>
+  </aside>
+  <main class="container main-content">
+    <header class="app-header"><h1 class="app-title">Minha Conta</h1></header>
+    <section class="card">
+      <h2>Informações da conta</h2>
+      <div class="profile-grid">
+        <div class="avatar-block">
+          <div id="profile-avatar" class="profile-avatar">—</div>
+          <div class="avatar-controls">
+            <button id="avatar-choose" type="button" class="secondary">Escolher imagem</button>
+            <button id="avatar-remove" type="button" class="ghost">Remover</button>
+            <input type="file" id="avatar-upload" accept="image/*" style="display:none" />
+          </div>
+          <div class="small">Arraste uma imagem ou use o botão "Escolher imagem". Tip: imagens quadradas funcionam melhor.</div>
+        </div>
+        <div class="acct-block">
+          <label for="acct-email-input">Email</label>
+          <input id="acct-email-input" type="email" placeholder="voce@exemplo.com" maxlength="150" />
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <div class="field-hint small" id="email-valid-msg" style="color:#d00; display:none">Email inválido</div>
+            <div class="small" id="email-count" style="color:var(--muted)">0/150</div>
+          </div>
+          <div class="actions horiz">
+            <button id="btn-save-email" class="primary" disabled>Salvar email</button>
+            <button id="btn-reset" class="danger">Reset meus dados</button>
+          </div>
+          <div class="small" id="email-hint">Ao alterar o email, a sessão será atualizada para o novo email.</div>
+        </div>
+      </div>
+      <hr />
+      <div class="stats">
+        <div>Número de lançamentos: <strong id="stat-count">0</strong></div>
+        <div>Saldo atual: <strong id="stat-balance">R$ 0,00</strong></div>
+        <div>Último backup: <span id="stat-last-backup">—</span></div>
+      </div>
+      <!-- Observações removidas conforme solicitação -->
+      <div class="field">
+        <label>Opções</label>
+        <div class="actions horiz">
+          <button id="btn-sanitize" class="secondary">Sanitizar agora</button>
+          <button id="btn-export-csv">Exportar CSV</button>
+          
+        </div>
+      </div>
+      <div class="field small" id="acct-note">Dica: use "Reset meus dados" apenas se quiser apagar todos os lançamentos desta conta.</div>
+    </section>
+  </main>
+
+  <script src="firebase.template.js"></script>
+  <script src="auth.js"></script>
+  <script src="userdb.js"></script>
+  <script src="app.js"></script>
+  <script src="navigation.js"></script>
+  <script src="ui-widgets.js"></script>
+  <script>
+    if(!localStorage.getItem('auth_session_email')) location.replace('index.html');
+    const email = localStorage.getItem('auth_session_email') || '—';
+    // Some templates include an element to *display* the email (acct-email),
+    // but this page uses an input (acct-email-input). Guard the access so
+    // a missing element doesn't throw and block other handlers from wiring.
+    const acctEmailInputEl = document.getElementById('acct-email-input');
+    if(acctEmailInputEl) { acctEmailInputEl.value = localStorage.getItem('auth_session_email') || ''; }
+    document.getElementById('side-user-email').textContent = email;
+    document.getElementById('side-user-email').textContent = email;
+    document.getElementById('side-logout').addEventListener('click', () => { localStorage.removeItem('auth_session_email'); location.replace('index.html'); });
+
+    document.getElementById('btn-sanitize').addEventListener('click', async () => {
+      if(typeof window.__sanitizeNow === 'function') {
+        window.__sanitizeNow();
+        UI.toast('Sanitização solicitada. Verifique a lista de lançamentos.', {type:'success'});
+      } else UI.toast('Sanitização não disponível.', {type:'error'});
+    });
+
+    document.getElementById('btn-export-csv').addEventListener('click', () => {
+      if(typeof exportCSV === 'function') return exportCSV();
+      if(typeof window.__userExport === 'function') {
+        const json = window.__userExport();
+        const blob = new Blob([JSON.stringify(json, null, 2)], {type:'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'backup.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+        return;
+      }
+  UI.toast('Exportação não disponível neste ambiente.', {type:'error'});
+    });
+
+    document.getElementById('btn-reset').addEventListener('click', async () => {
+      const ok = await UI.confirm('Apagar meus dados', 'Tem certeza que deseja apagar todos os seus dados? Esta ação não pode ser desfeita.');
+      if(!ok) return;
+      if(typeof window.__resetMyData === 'function') {
+        window.__resetMyData();
+        UI.toast('Seus dados foram removidos.', {type:'success'});
+        updateStats();
+      } else {
+        // fallback: clear from UserDB if available
+        const norm = (localStorage.getItem('auth_session_email')||'').toLowerCase().trim();
+        if(window.UserDB && typeof UserDB.setUserData === 'function'){
+          UserDB.setUserData(norm, []);
+          UI.toast('Seus dados foram removidos (fallback UserDB).', {type:'success'});
+          updateStats();
+        } else UI.toast('Função de reset não disponível.', {type:'error'});
+      }
+    });
+
+    // Save email (update session key and optionally migrate data)
+    document.getElementById('btn-save-email').addEventListener('click', () => {
+      const val = document.getElementById('acct-email-input').value.trim();
+  if(!val || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(val)) return UI.toast('Digite um email válido.', {type:'error'});
+      const old = localStorage.getItem('auth_session_email');
+  if(old && old === val){ return UI.toast('Email inalterado.', {type:'info'}); }
+      // update session and attempt to migrate DB entry
+      const oldNorm = (old||'').toLowerCase().trim();
+      const newNorm = val.toLowerCase().trim();
+      localStorage.setItem('auth_session_email', val);
+      // migrate data if UserDB present
+      if(window.UserDB && typeof UserDB.migrateFromOld === 'function'){
+        try{ UserDB.migrateFromOld(newNorm); } catch(e){}
+      }
+      UI.toast('Email atualizado. Você será redirecionado ao resumo.', {type:'success'});
+      location.replace('resumo.html');
+    });
+
+    // Avatar upload handling (stores dataURL under fd_avatar::<norm>)
+    const avElem = document.getElementById('profile-avatar');
+    const avatarUpload = document.getElementById('avatar-upload');
+    function loadAvatar(){
+      try{
+        const norm = (localStorage.getItem('auth_session_email')||'').toLowerCase().trim();
+        const key = 'fd_avatar::'+norm; const data = localStorage.getItem(key);
+        if(data){ avElem.style.backgroundImage = `url(${data})`; avElem.textContent='';
+          // also update the sidebar avatar preview
+          const side = document.getElementById('user-avatar'); if(side) { side.style.backgroundImage = `url(${data})`; side.textContent = ''; }
+        } else {
+          const email = localStorage.getItem('auth_session_email')||''; const namePart = email.split('@')[0]||''; const parts = namePart.replace(/[^a-zA-Z0-9]/g,' ').split(' ').filter(Boolean); let initials = parts.length>=2 ? (parts[0][0]+parts[1][0]) : namePart.slice(0,2); avElem.style.backgroundImage=''; avElem.textContent = (initials||'—').toUpperCase(); }
+      }catch(e){ console.warn(e); }
+    }
+    // avatar controls: choose, remove
+    const avatarChoose = document.getElementById('avatar-choose');
+    const avatarRemove = document.getElementById('avatar-remove');
+    avatarChoose.addEventListener('click', ()=> document.getElementById('avatar-upload').click());
+    avatarUpload.addEventListener('change', async ()=>{
+      const f = avatarUpload.files[0]; if(!f) return;
+      if(!f.type.startsWith('image/')) return UI.toast('Selecione uma imagem.', {type:'error'});
+      try{
+        // produce a smaller avatar by default (max 256px and compressed)
+        const processed = await processImageFile(f, 256);
+        const norm = (localStorage.getItem('auth_session_email')||'').toLowerCase().trim();
+        localStorage.setItem('fd_avatar::'+norm, processed);
+        // timestamp for potential history
+        localStorage.setItem('fd_avatar::'+norm+'::ts', String(Date.now()));
+        loadAvatar();
+        // ensure sidebar avatar is updated (in case loadAvatar didn't run yet)
+        try{ const side = document.getElementById('user-avatar'); if(side) { side.style.backgroundImage = `url(${processed})`; side.textContent = ''; } }catch(e){}
+  }catch(err){ UI.toast('Falha ao processar imagem: '+err.message, {type:'error'}); }
+    });
+
+    // Process image: resize and crop to square using canvas, return dataURL (jpeg)
+    function processImageFile(file, maxSide){
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        const reader = new FileReader();
+        reader.onload = () => {
+          img.onload = () => {
+            try{
+              const w = img.width, h = img.height;
+              const side = Math.min(Math.max(64, Math.min(w,h)), maxSide);
+              // compute crop center
+              const sx = (w - side)/2; const sy = (h - side)/2;
+              const canvas = document.createElement('canvas'); canvas.width = side; canvas.height = side;
+              const ctx = canvas.getContext('2d');
+              // draw cropped area scaled to canvas
+              ctx.drawImage(img, sx, sy, side, side, 0, 0, side, side);
+              // export compressed jpeg with iterative quality reduction until small enough
+              const MAX_BYTES = 120 * 1024; // aim for ~120KB
+              let quality = 0.85;
+              let dataUrl = canvas.toDataURL('image/jpeg', quality);
+              // If the dataURL (base64) length is too large, reduce quality stepwise
+              while(dataUrl.length > MAX_BYTES && quality > 0.5){ quality = Math.max(0.5, quality - 0.05); dataUrl = canvas.toDataURL('image/jpeg', quality); }
+              resolve(dataUrl);
+            }catch(e){ reject(e); }
+          };
+          img.onerror = () => reject(new Error('Falha ao carregar imagem')); 
+          img.src = reader.result;
+        };
+        reader.onerror = () => reject(new Error('Falha ao ler arquivo'));
+        reader.readAsDataURL(file);
+      });
+    }
+    avatarRemove.addEventListener('click', ()=>{
+      const norm = (localStorage.getItem('auth_session_email')||'').toLowerCase().trim();
+      localStorage.removeItem('fd_avatar::'+norm); localStorage.removeItem('fd_avatar::'+norm+'::ts'); loadAvatar();
+      // remove sidebar avatar too
+      const side = document.getElementById('user-avatar'); if(side){ side.style.backgroundImage=''; side.textContent = (localStorage.getItem('auth_session_email')||'').split('@')[0].slice(0,2).toUpperCase() || '—'; }
+    });
+    // drag & drop support on avatar
+    avElem.addEventListener('dragover', e=>{ e.preventDefault(); avElem.classList.add('dragover'); });
+    avElem.addEventListener('dragleave', e=>{ avElem.classList.remove('dragover'); });
+    avElem.addEventListener('drop', e=>{
+      e.preventDefault(); avElem.classList.remove('dragover');
+      const f = e.dataTransfer.files && e.dataTransfer.files[0]; if(!f) return; avatarUpload.files = e.dataTransfer.files; const ev = new Event('change'); avatarUpload.dispatchEvent(ev);
+    });
+
+    // Paste support: allow pasting an image into the avatar area
+    avElem.addEventListener('paste', async (e) => {
+      try{
+        const items = (e.clipboardData && e.clipboardData.items) || [];
+        for(let i=0;i<items.length;i++){
+          const it = items[i]; if(it.kind === 'file' && it.type.startsWith('image/')){
+            const f = it.getAsFile(); if(!f) continue;
+            const processed = await processImageFile(f, 256);
+            const norm = (localStorage.getItem('auth_session_email')||'').toLowerCase().trim();
+            localStorage.setItem('fd_avatar::'+norm, processed);
+            localStorage.setItem('fd_avatar::'+norm+'::ts', String(Date.now()));
+            loadAvatar();
+            UI.toast('Imagem colada e definida como avatar.', {type:'success'});
+            break;
+          }
+        }
+      }catch(err){ console.warn('paste avatar fail', err); UI.toast('Falha ao colar imagem.', {type:'error'}); }
+    });
+
+  // Export CSV button
+    document.getElementById('btn-export-csv').addEventListener('click', () => {
+      if(typeof exportCSV === 'function') return exportCSV();
+      if(window.UserDB && typeof UserDB.exportUser === 'function'){
+        const norm = (localStorage.getItem('auth_session_email')||'').toLowerCase().trim();
+        const json = UserDB.exportUser(norm);
+        const blob = new Blob([json], {type:'application/json'});
+        const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `backup_${norm}.json`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+        return;
+      }
+  UI.toast('Exportação não disponível.', {type:'error'});
+    });
+
+    // Sanitizar
+    document.getElementById('btn-sanitize').addEventListener('click', () => {
+  if(typeof window.__sanitizeNow === 'function'){ window.__sanitizeNow(); UI.toast('Sanitização solicitada.', {type:'success'}); updateStats(); }
+  else UI.toast('Sanitização não disponível.', {type:'error'});
+    });
+
+    
+
+    // Stats helper
+    function updateStats(){
+      const norm = (localStorage.getItem('auth_session_email')||'').toLowerCase().trim();
+      let items = [];
+      if(window.UserDB && typeof UserDB.getUserData === 'function') items = UserDB.getUserData(norm) || [];
+      else if(window.__df && Array.isArray(window.__df.store?.data)) items = window.__df.store.data.filter(t=>t.owner===norm);
+  const count = items.length; document.getElementById('stat-count').textContent = count;
+  const bal = items.reduce((s,t)=> s + Number(t.amount||0), 0);
+  if(typeof formatCurrency === 'function') document.getElementById('stat-balance').textContent = formatCurrency(bal);
+  else document.getElementById('stat-balance').textContent = 'R$ ' + bal.toFixed(2);
+      // last backup scanning localStorage keys
+      const bkPrefix = 'finance_backup::'+norm;
+      let last = '—'; for(let i=0;i<localStorage.length;i++){ const k = localStorage.key(i); if(k && k.startsWith(bkPrefix)){ last = new Date(Number(localStorage.getItem(k+'::ts')||0)).toLocaleString() || '—'; }} document.getElementById('stat-last-backup').textContent = last;
+    }
+
+    // Inline email validation and counter
+    const emailInput = document.getElementById('acct-email-input');
+    const saveBtn = document.getElementById('btn-save-email');
+    const emailMsg = document.getElementById('email-valid-msg');
+    const emailCount = document.getElementById('email-count');
+    function validateEmail(v){ return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v); }
+    emailInput.addEventListener('input', ()=>{
+      const v = emailInput.value.trim(); const ok = validateEmail(v);
+      emailCount.textContent = v.length + '/150';
+      if(!v){ emailMsg.style.display='none'; saveBtn.disabled=true; }
+      else if(!ok){ emailMsg.style.display='block'; emailMsg.textContent='Email inválido'; saveBtn.disabled=true; }
+      else { emailMsg.style.display='none'; saveBtn.disabled=false; }
+    });
+
+    // Init
+    document.getElementById('acct-email-input').value = localStorage.getItem('auth_session_email') || '';
+    // trigger validation on load
+    emailInput.dispatchEvent(new Event('input'));
+    loadAvatar(); updateStats();
+
+  // refresh stats when prefs change (currency/locale)
+  window.addEventListener('prefs:changed', ()=>{ try{ updateStats(); }catch(e){} });
+
+    // Observações removidas - código relativo excluído
+  </script>
+</body>
+</html>

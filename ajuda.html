@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ajuda - FinanceDash</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <aside class="sidebar" id="main-sidebar">
+    <div class="sidebar-inner">
+      <div class="identity-block">
+        <div class="id-logo">FinanceDash</div>
+        <div class="id-avatar" id="user-avatar" aria-hidden="true"></div>
+        <div class="id-user"><span id="side-user-email">—</span></div>
+        <button id="side-logout" class="ghost mini-logout">Sair</button>
+      </div>
+      <div class="sidebar-head">Menu</div>
+      <ul class="nav-list">
+        <li><a href="novo-lancamento.html">Novo Lançamento</a></li>
+        <li><a href="resumo.html">Resumo</a></li>
+        <li><a href="filtros.html">Filtros</a></li>
+        <li><a href="lancamentos.html">Lançamentos</a></li>
+        <li><a href="grafico.html">Gráfico</a></li>
+      </ul>
+    </div>
+  </aside>
+  <main class="container main-content">
+    <header class="app-header"><h1 class="app-title">Ajuda / Sobre</h1></header>
+    <section class="card">
+      <h2>Perguntas Frequentes</h2>
+      <details><summary>Como faço backup dos meus dados?</summary><p>Vá em Backup / Restaurar e clique em "Baixar backup (JSON)".</p></details>
+      <details><summary>Como apago meus dados?</summary><p>Use o botão "Reset meus dados" em Minha Conta.</p></details>
+      <details><summary>Posso usar a mesma conta em vários dispositivos?</summary><p>Sim — os dados ficam no seu navegador. Sincronização entre dispositivos não está implementada neste demo.</p></details>
+      <div class="small">Versão: <span id="app-version">1.0.0</span></div>
+    </section>
+  </main>
+
+  <script src="firebase.template.js"></script>
+  <script src="auth.js"></script>
+  <script src="userdb.js"></script>
+  <script src="app.js"></script>
+  <script src="navigation.js"></script>
+  <script> if(!localStorage.getItem('auth_session_email')) location.replace('index.html'); document.getElementById('side-user-email').textContent = localStorage.getItem('auth_session_email') || '—'; document.getElementById('side-logout').addEventListener('click', () => { localStorage.removeItem('auth_session_email'); location.replace('index.html'); });</script>
+</body>
+</html>

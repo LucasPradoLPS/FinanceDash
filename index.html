@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard Financeiro</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="login-layout">
+    <aside class="login-aside">
+      <div class="brand">
+  <div class="logo-circle">FD</div>
+  <h1 data-i18n="app_name">FinanceDash</h1>
+  <p data-i18n="app_tagline">Controle financeiro claro, inteligente e em tempo real.</p>
+      </div>
+      <ul class="benefits">
+        <li data-i18n="benefit_summary">Resumo instantâneo de entradas e saídas</li>
+        <li data-i18n="benefit_charts">Gráficos por categoria</li>
+        <li data-i18n="benefit_export">Exportação em CSV</li>
+        <li data-i18n="benefit_sync">Sincronização opcional com Firebase</li>
+      </ul>
+      <footer class="aside-footer">© <span id="year"></span> FinanceDash</footer>
+    </aside>
+    <main class="login-main">
+      <section class="login-panel card" id="login-card">
+  <h2 data-i18n="login_title">Acesse sua conta</h2>
+        <form id="login-form" novalidate>
+          <div class="field-group with-icon">
+            <label for="login-email" data-i18n="label_email">Email</label>
+            <div class="input-wrapper">
+              <span class="input-icon" aria-hidden="true">📧</span>
+              <input type="email" id="login-email" placeholder="voce@exemplo.com" data-i18n="placeholder_email" required autocomplete="email" />
+              <span class="input-valid" aria-hidden="true">✔</span>
+            </div>
+              <small class="field-hint" id="email-hint" data-i18n="hint_email">Use um email válido (ex: nome@dominio.com)</small>
+            <small class="field-error" id="email-error" aria-live="assertive"></small>
+          </div>
+          <div class="field-group with-icon">
+            <label for="login-password" data-i18n="label_password">Senha</label>
+            <div class="input-wrapper">
+              <span class="input-icon" aria-hidden="true">🔒</span>
+              <input type="password" id="login-password" placeholder="Mínimo 6 caracteres" data-i18n="placeholder_password" required autocomplete="current-password" minlength="6" aria-describedby="pass-hint pass-strength" />
+              <button type="button" class="toggle-pass" id="toggle-pass" aria-label="Mostrar senha">👁</button>
+            </div>
+            <small class="field-hint" id="pass-hint" data-i18n="hint_password">Mínimo 6 caracteres. Recomenda-se letras e números.</small>
+            <div class="password-strength" id="pass-strength" aria-hidden="false">
+              <div class="strength-bar" id="pass-strength-bar" aria-hidden="true"></div>
+              <small class="strength-text small" id="pass-strength" aria-live="polite">&nbsp;</small>
+            </div>
+            <small class="field-error" id="pass-error" aria-live="assertive"></small>
+          </div>
+          <div class="login-options">
+            <label class="remember"><input type="checkbox" id="remember-email" /> <span data-i18n="remember_email">Lembrar email</span></label>
+            <a href="#" id="fake-forgot" class="forgot-link" data-i18n="forgot_password">Esqueci a senha</a>
+          </div>
+          <div class="actions horiz">
+            <button type="submit" id="btn-login"><span class="btn-label" data-i18n="btn_login">Entrar</span><span class="btn-spinner" aria-hidden="true"></span></button>
+            <button type="button" id="btn-register" class="secondary"><span class="btn-label" data-i18n="btn_register">Criar conta</span><span class="btn-spinner" aria-hidden="true"></span></button>
+          </div>
+          <div class="agreement small" data-i18n="agreement">Ao continuar você concorda com nossos <a href="#" class="link-muted" id="fake-terms">Termos</a> & <a href="#" class="link-muted" id="fake-privacy">Privacidade</a>.</div>
+        </form>
+        <div class="login-status small" id="login-status" aria-live="polite" role="status"></div>
+      </section>
+    </main>
+  </div>
+  <script src="i18n.js"></script>
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+    document.getElementById('fake-forgot').addEventListener('click', e => { e.preventDefault(); if(window.UI && UI.toast) UI.toast('Fluxo de recuperação não implementado neste demo.', {type:'info'}); else alert('Fluxo de recuperação não implementado neste demo.'); });
+  </script>
+
+  <script src="firebase.template.js"></script>
+  <script src="auth.js"></script>
+  <script src="login.js"></script>
+  <script src="ui-widgets.js"></script>
+</body>
+</html>
